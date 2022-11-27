@@ -141,7 +141,7 @@ func (c *controller) evictPodsCloseToMemoryLimit(ctx context.Context) error {
 				DryRun: []string{"All"},
 			}
 		}
-		klog.V(1).Infof("Evicting Pod '%s/%s'", pod.Namespace, pod.Name)
+		klog.V(0).Infof("Evicting Pod '%s/%s'", pod.Namespace, pod.Name)
 		c.recorder.Event(pod.DeepCopyObject(), "Normal", "SoftEviction", fmt.Sprintf("Pod '%s/%s' has at least one container close to its memory limit", pod.Namespace, pod.Name))
 
 		evictionErr := c.clientset.PolicyV1beta1().Evictions(pod.Namespace).Evict(ctx, &evictionPolicy)
@@ -210,11 +210,14 @@ func identifyContainersCloseToMemoryLimit(ctx context.Context, podMetrics metric
 			continue
 		}
 		memoryUsagePercent := 100 * containerMetric.Usage.Memory().AsApproximateFloat64() / containerDefinition.Resources.Limits.Memory().AsApproximateFloat64()
-		klog.V(1).Infof("Memory usage for '%s/%s/%s' is %.1f%%\n", podMetrics.Namespace, podMetrics.Name, containerMetric.Name, memoryUsagePercent)
 
+		logLevel := klog.Level(1)
 		if memoryUsagePercent > usageMemoryUsageThresholdPercent {
+			logLevel = klog.Level(0)
 			containerOverConsuming = append(containerOverConsuming, containerMetric.Name)
 		}
+
+		klog.V(logLevel).Infof("Memory usage for '%s/%s/%s' is %.1f%%\n", podMetrics.Namespace, podMetrics.Name, containerMetric.Name, memoryUsagePercent)
 	}
 	return containerOverConsuming, nil
 }
